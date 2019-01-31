@@ -26,9 +26,6 @@ import re
 import os
 import shutil
 import stat
-import urllib
-import urllib.parse
-import urllib.request
 import http.client
 import socket
 
@@ -67,6 +64,10 @@ max_disk_used_percent = None
 keep_re = re.compile(r"""(?P<range>\d+)(?P<unit>[dw]?)""", re.VERBOSE)
 cutoff_date = None
 today = datetime.date.today()
+
+# recording download buffer, allocated once
+recording_buffer_size = 1024 ** 2
+recording_buffer = bytearray(recording_buffer_size)
 
 # regex to extract the charset from a content-type header
 content_type_re = re.compile(r"^.*;\s*charset=(?P<charset>.*)$", re.IGNORECASE)
@@ -187,7 +188,7 @@ def get_dashcam_filenames(address):
             http_conn.close()
 
 
-def download_file(base_url, filename, destination):
+def download_file(address, filename, destination):
     """downloads a file from the dashcam to the destination directory; returns whether data was transferred"""
     global dry_run
 
@@ -201,9 +202,38 @@ def download_file(base_url, filename, destination):
     if os.path.exists(temp_filepath):
         logger.debug("Found incomplete download : %s", temp_filepath)
 
-    url = urllib.parse.urljoin(base_url, "Record/%s" % filename)
     if not dry_run:
-        urllib.request.urlretrieve(url, temp_filepath)
+        http_conn = None
+        temp_file = None
+        try:
+            http_conn = http.client.HTTPConnection(address)
+
+            recording_path = "/Record/%s" % filename
+            http_conn.request("GET", recording_path)
+
+            response = http_conn.getresponse()
+
+            if response.status != 200:
+                raise UserWarning("Could not find recording : %s; was probably deleted" % filename)
+
+            temp_file = open(temp_filepath, "wb")
+
+            # reads from the response, writes to the temp file via a buffer
+            while True:
+                bytes_read = response.readinto(recording_buffer)
+
+                if bytes_read == 0:
+                    break
+                elif bytes_read == recording_buffer_size:
+                    temp_file.write(recording_buffer)
+                else:
+                    temp_file.write(recording_buffer[:bytes_read])
+        finally:
+            if http_conn:
+                http_conn.close()
+            if temp_file:
+                temp_file.close()
+
         os.rename(temp_filepath, filepath)
         logger.debug("Downloaded file : %s", filename)
     else:
@@ -212,7 +242,7 @@ def download_file(base_url, filename, destination):
     return True
 
 
-def download_recording(base_url, recording, destination):
+def download_recording(address, recording, destination):
     """downloads the set of recordings, including gps data, for the given filename from the dashcam to the destination
     directory"""
     global max_disk_used_percent
@@ -227,7 +257,7 @@ def download_recording(base_url, recording, destination):
 
     # downloads the video recording
     filename = recording.filename
-    transferred = download_file(base_url, filename, destination)
+    transferred = download_file(address, filename, destination)
 
     # recording logger, depends on type of recording
     recording_logger = logger
@@ -238,10 +268,10 @@ def download_recording(base_url, recording, destination):
         recording_logger = cron_logger
 
         gps_filename = "%s_N.gps" % recording.base_filename
-        transferred |= download_file(base_url, gps_filename, destination)
+        transferred |= download_file(address, gps_filename, destination)
 
         tgf_filename = "%s_N.3gf" % recording.base_filename
-        transferred |= download_file(base_url, tgf_filename, destination)
+        transferred |= download_file(address, tgf_filename, destination)
 
     # logs if data was transferred (or would have been)
     if transferred:
@@ -309,13 +339,12 @@ def sync(address, destination):
     """synchronizes the recordings at the dashcam address with the destination directory"""
     prepare_destination(destination)
 
-    base_url = "http://%s" % address
     dashcam_filenames = get_dashcam_filenames(address)
     dashcam_recordings = [to_recording(x) for x in dashcam_filenames]
     current_dashcam_recordings = get_current_recordings(dashcam_recordings)
 
     for recording in current_dashcam_recordings:
-        download_recording(base_url, recording, destination)
+        download_recording(address, recording, destination)
 
 
 def lock(destination):
