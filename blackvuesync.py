@@ -29,7 +29,8 @@ import stat
 import urllib
 import urllib.parse
 import urllib.request
-
+import http.client
+import socket
 
 # logging
 logging.basicConfig(format="%(asctime)s: %(levelname)s %(message)s")
@@ -67,8 +68,23 @@ keep_re = re.compile(r"""(?P<range>\d+)(?P<unit>[dw]?)""", re.VERBOSE)
 cutoff_date = None
 today = datetime.date.today()
 
+# regex to extract the charset from a content-type header
+content_type_re = re.compile(r"^.*;\s*charset=(?P<charset>.*)$", re.IGNORECASE)
+
+
+def get_charset(response):
+    """gets the charset from the content-type header; defaults to UTF-8"""
+    content_type = response.getheader("Content-Type")
+
+    if not content_type:
+        return "UTF-8"
+
+    content_type_match = re.fullmatch(content_type_re, content_type)
+    return content_type_match.group("charset") if content_type_match else "UTF-8"
+
 
 def calc_cutoff_date(keep):
+    """given a retention period, calculates the date before which files should be deleted"""
     global today
 
     keep_match = re.fullmatch(keep_re, keep)
@@ -145,23 +161,30 @@ def get_filenames(file_lines):
     return filenames
 
 
-def get_dashcam_filenames(base_url):
+def get_dashcam_filenames(address):
     """gets the recording filenames from the dashcam at the """
+    http_conn = None
     try:
-        url = urllib.parse.urljoin(base_url, "blackvue_vod.cgi")
-        request = urllib.request.Request(url)
-        response = urllib.request.urlopen(request)
-    except urllib.error.URLError as e:
-        raise UserWarning("Cannot communicate with dashcam at address : %s; error : %s" % (base_url, e))
+        http_conn = http.client.HTTPConnection(address)
 
-    response_status_code = response.getcode()
-    if response_status_code != 200:
-        raise RuntimeError("Error response from : %s ; status code : %s" % (base_url, response_status_code))
+        http_conn.request("GET", "/blackvue_vod.cgi")
+        response = http_conn.getresponse()
 
-    charset = response.info().get_param("charset", "UTF-8")
-    file_lines = [x.decode(charset) for x in response.readlines()]
+        response_status_code = response.status
+        if response_status_code != 200:
+            raise RuntimeError("Error response from : %s ; status code : %s" % (address, response_status_code))
 
-    return get_filenames(file_lines)
+        charset = get_charset(response)
+        file_lines = [x.decode(charset) for x in response.readlines()]
+
+        return get_filenames(file_lines)
+    except socket.gaierror as e:
+        raise UserWarning("Cannot open connection to dashcam at address : %s; error : %s" % (address, e))
+    except http.client.HTTPException as e:
+        raise UserWarning("Cannot communicate with dashcam at address : %s; error : %s" % (address, e))
+    finally:
+        if http_conn:
+            http_conn.close()
 
 
 def download_file(base_url, filename, destination):
@@ -287,7 +310,7 @@ def sync(address, destination):
     prepare_destination(destination)
 
     base_url = "http://%s" % address
-    dashcam_filenames = get_dashcam_filenames(base_url)
+    dashcam_filenames = get_dashcam_filenames(address)
     dashcam_recordings = [to_recording(x) for x in dashcam_filenames]
     current_dashcam_recordings = get_current_recordings(dashcam_recordings)
 
@@ -358,7 +381,6 @@ def parse_args():
 
 
 def run():
-    # dry-run is a global setting
     global dry_run
     global max_disk_used_percent
     global cutoff_date
