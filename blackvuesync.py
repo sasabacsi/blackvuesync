@@ -69,6 +69,9 @@ today = datetime.date.today()
 recording_buffer_size = 1024 ** 2
 recording_buffer = bytearray(recording_buffer_size)
 
+# connection timeout
+http_conn_timeout = 10
+
 # regex to extract the charset from a content-type header
 content_type_re = re.compile(r"^.*;\s*charset=(?P<charset>.*)$", re.IGNORECASE)
 
@@ -166,7 +169,7 @@ def get_dashcam_filenames(address):
     """gets the recording filenames from the dashcam at the """
     http_conn = None
     try:
-        http_conn = http.client.HTTPConnection(address)
+        http_conn = http.client.HTTPConnection(address, timeout=http_conn_timeout)
 
         http_conn.request("GET", "/blackvue_vod.cgi")
         response = http_conn.getresponse()
@@ -206,7 +209,7 @@ def download_file(address, filename, destination):
         http_conn = None
         temp_file = None
         try:
-            http_conn = http.client.HTTPConnection(address)
+            http_conn = http.client.HTTPConnection(address, timeout=http_conn_timeout)
 
             recording_path = "/Record/%s" % filename
             http_conn.request("GET", recording_path)
