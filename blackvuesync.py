@@ -67,8 +67,16 @@ keep_re = re.compile(r"""(?P<range>\d+)(?P<unit>[dw]?)""", re.VERBOSE)
 cutoff_date = None
 today = datetime.date.today()
 
+# http connection timeout
+http_conn_timeout = 10
+
+# recording download buffer, allocated once
+recording_buffer_size = 1024 * 8
+recording_buffer = bytearray(recording_buffer_size)
+
 
 def calc_cutoff_date(keep):
+    """given a retention period, calculates the date before which files should be deleted"""
     global today
 
     keep_match = re.fullmatch(keep_re, keep)
@@ -150,7 +158,7 @@ def get_dashcam_filenames(base_url):
     try:
         url = urllib.parse.urljoin(base_url, "blackvue_vod.cgi")
         request = urllib.request.Request(url)
-        response = urllib.request.urlopen(request)
+        response = urllib.request.urlopen(request, timeout=http_conn_timeout)
     except urllib.error.URLError as e:
         raise UserWarning("Cannot communicate with dashcam at address : %s; error : %s" % (base_url, e))
 
@@ -178,9 +186,28 @@ def download_file(base_url, filename, destination):
     if os.path.exists(temp_filepath):
         logger.debug("Found incomplete download : %s", temp_filepath)
 
-    url = urllib.parse.urljoin(base_url, "Record/%s" % filename)
     if not dry_run:
-        urllib.request.urlretrieve(url, temp_filepath)
+        try:
+            url = urllib.parse.urljoin(base_url, "Record/%s" % filename)
+            response = urllib.request.urlopen(url, timeout=http_conn_timeout)
+
+            if response.status != 200:
+                raise UserWarning("Could not find recording : %s; was probably deleted" % filename)
+
+            # reads from the response, writes to the temp file via a buffer
+            with open(temp_filepath, "wb") as temp_file:
+                while True:
+                    bytes_read = response.readinto(recording_buffer)
+
+                    if bytes_read == 0:
+                        break
+                    elif bytes_read == recording_buffer_size:
+                        temp_file.write(recording_buffer)
+                    else:
+                        temp_file.write(recording_buffer[:bytes_read])
+        except urllib.error.URLError as e:
+            raise UserWarning("Cannot communicate with dashcam at address : %s; error : %s" % (base_url, e))
+
         os.rename(temp_filepath, filepath)
         logger.debug("Downloaded file : %s", filename)
     else:
