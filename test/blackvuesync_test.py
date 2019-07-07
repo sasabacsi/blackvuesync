@@ -39,7 +39,8 @@ def test_to_recording(filename, expected_recording):
 @pytest.mark.parametrize("filename, expected_daily_group_name, expected_weekly_group_name, "
                          "expected_monthly_group_name, expected_yearly_group_name",
     [("20190219_104220_NF.mp4", "2019-02-19", "2019-02-18", "2019-02", "2019")])
-def test_to_group_name(filename, expected_daily_group_name, expected_weekly_group_name, expected_monthly_group_name, expected_yearly_group_name):
+def test_to_group_name(filename, expected_daily_group_name, expected_weekly_group_name, expected_monthly_group_name,
+                       expected_yearly_group_name):
     recording = blackvuesync.to_recording(filename)
 
     assert expected_daily_group_name == blackvuesync.to_group_name(recording, "daily")

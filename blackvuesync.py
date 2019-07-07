@@ -173,10 +173,10 @@ def get_dashcam_filenames(base_url):
         raise UserWarning("Timeout communicating with dashcam at address : %s; error : %s" % (base_url, e))
 
 
-def to_group_name(recording, group_type):
-    if group_type == "daily":
+def to_group_name(recording, grouping):
+    if grouping == "daily":
         return recording.datetime.date().isoformat()
-    elif group_type == "weekly":
+    elif grouping == "weekly":
         recording_date = recording.datetime.date()
 
         # day of the week (mon = 0, ..., sun = 6)
@@ -184,9 +184,9 @@ def to_group_name(recording, group_type):
         recording_weekday_delta = datetime.timedelta(days=recording_weekday)
         recording_mon_date = recording_date - recording_weekday_delta
         return recording_mon_date.isoformat()
-    elif group_type == "monthly":
+    elif grouping == "monthly":
         return recording.datetime.date().strftime("%Y-%m")
-    elif group_type == "yearly":
+    elif grouping == "yearly":
         return recording.datetime.date().strftime("%Y")
     else:
         return None
