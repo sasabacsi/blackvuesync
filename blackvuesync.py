@@ -21,6 +21,7 @@ import argparse
 import datetime
 from collections import namedtuple
 import fcntl
+import glob
 import logging
 import re
 import os
@@ -207,7 +208,7 @@ def to_natural_speed(speed_bps):
     return 0, "bps"
 
 
-def to_filepath(filename, destination, group_name):
+def to_filepath(destination, group_name, filename):
     if group_name:
         return os.path.join(destination, group_name, filename)
     else:
@@ -337,11 +338,28 @@ def sort_recordings(recordings, recording_priority):
     recordings.sort(key=sort_key)
 
 
-    def get_destination_recordings(destination):
-    """reads files from the destination directory and returns them as recording records"""
-    existing_files = os.listdir(destination)
+# group name regexps, keyed by grouping
+group_name_globs = {
+    "none": None,
+    "daily": "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]",
+    "weekly": "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]",
+    "monthly": "[0-9][0-9][0-9][0-9]-[0-9][0-9]",
+    "yearly": "[0-9][0-9][0-9][0-9]",
+}
 
-    return [f for f in [to_recording(f) for f in existing_files] if f is not None]
+# dashcam recording filename glob pattern
+filename_glob = "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[NEPM][FR].mp4"
+
+
+def get_destination_recordings(destination, grouping):
+    """reads files from the destination directory and returns them as recording records"""
+    group_name_glob = group_name_globs[grouping]
+
+    existing_filepath_glob = to_filepath(destination, group_name_glob, filename_glob)
+
+    existing_filepaths = glob.glob(existing_filepath_glob)
+
+    return [r for r in [to_recording(os.path.basename(p), grouping) for p in existing_filepaths] if r is not None]
 
 
 def get_outdated_recordings(recordings):
@@ -373,14 +391,14 @@ def ensure_destination(destination):
         raise RuntimeError("download destination directory not writable : %s" % destination)
 
 
-def prepare_destination(destination):
+def prepare_destination(destination, grouping):
     """prepares the destination, ensuring it's valid and removing excess recordings"""
     global dry_run
     global cutoff_date
 
     # optionally removes outdated recordings
     if cutoff_date:
-        existing_recordings = get_destination_recordings(destination)
+        existing_recordings = get_destination_recordings(destination, grouping)
         outdated_recordings = get_outdated_recordings(existing_recordings)
 
         for outdated_recording in outdated_recordings:
@@ -417,9 +435,7 @@ def prepare_destination(destination):
 
 def sync(address, destination, grouping, download_priority):
     """synchronizes the recordings at the dashcam address with the destination directory"""
-
-    # TODO implement grouping for this too
-    # prepare_destination(destination)
+    prepare_destination(destination, grouping)
 
     base_url = "http://%s" % address
     dashcam_filenames = get_dashcam_filenames(base_url)
