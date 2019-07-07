@@ -481,6 +481,11 @@ def parse_args():
                             help="dashcam IP address or name")
     arg_parser.add_argument("-d", "--destination", metavar="DEST",
                             help="sets the destination directory to DEST; defaults to the current directory")
+    arg_parser.add_argument("-g", "--grouping", metavar="GROUPING", default="none",
+                            choices=["none", "daily", "weekly", "monthly", "yearly"],
+                            help="groups recording by day, week, month or year under a directory named after the date; "
+                                 "so respectively 2019-06-15, 2019-06-09 (Mon), 2019-07 or 2019; "
+                                 "defaults to ""none"", indicating no grouping")
     arg_parser.add_argument("-k", "--keep", metavar="KEEP_RANGE",
                             help="""keeps recordings in the given range, removing the rest; defaults to days, but can
                             suffix with d, w for days or weeks respectively""")
@@ -547,6 +552,8 @@ def run():
         lf_fd = lock(destination)
 
         try:
+            grouping = args.grouping
+
             sync(args.address, destination, args.priority)
         finally:
             # removes temporary files (if we synced successfully, these are temp files from lost recordings)
