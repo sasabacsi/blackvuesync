@@ -453,7 +453,7 @@ def sync(address, destination, grouping, download_priority):
 
 
 # temp filename regular expression
-temp_filename_re = re.compile(r"\._?\d{8}_\d{6}_[NEPM][FR]?\.\w+")
+temp_filename_glob = ".[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[NEPM]*.*"
 
 
 def clean_destination(destination, grouping):
@@ -461,10 +461,10 @@ def clean_destination(destination, grouping):
     global dry_run
 
     # removes temporary files from interrupted downloads
-    filenames = os.listdir(destination)
-    temp_filenames = [f for f in filenames if temp_filename_re.fullmatch(f)]
-    for temp_filename in temp_filenames:
-        temp_filepath = os.path.join(destination, temp_filename)
+    temp_filepath_glob = os.path.join(destination, temp_filename_glob)
+    temp_filepaths = glob.glob(temp_filepath_glob)
+
+    for temp_filepath in temp_filepaths:
         if not dry_run:
             logger.debug("Removing temporary file : %s" % temp_filepath)
             os.remove(temp_filepath)
