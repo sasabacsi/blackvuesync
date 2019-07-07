@@ -104,15 +104,12 @@ def calc_cutoff_date(keep):
 # represents a recording: filename and metadata
 Recording = namedtuple("Recording", "filename base_filename datetime type direction extension")
 
-# dashcam recording filename pattern
+# dashcam recording filename regular expression
 filename_re = re.compile(r"""(?P<base_filename>(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)
     _(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d))
     _(?P<type>[NEPM])
     (?P<direction>[FR])
     \.(?P<extension>mp4)""", re.VERBOSE)
-
-# temp filename pattern
-temp_filename_re = re.compile(r"\._?\d{8}_\d{6}_[NEPM][FR]?\.\w+")
 
 
 def to_recording(filename):
@@ -402,6 +399,10 @@ def sync(address, destination, download_priority):
 
     for recording in current_dashcam_recordings:
         download_recording(base_url, recording, destination)
+
+
+# temp filename regular expression
+temp_filename_re = re.compile(r"\._?\d{8}_\d{6}_[NEPM][FR]?\.\w+")
 
 
 def clean_destination(destination):
