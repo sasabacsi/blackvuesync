@@ -337,7 +337,7 @@ def sort_recordings(recordings, recording_priority):
     recordings.sort(key=sort_key)
 
 
-def get_destination_recordings(destination):
+    def get_destination_recordings(destination):
     """reads files from the destination directory and returns them as recording records"""
     existing_files = os.listdir(destination)
 
@@ -384,7 +384,7 @@ def prepare_destination(destination):
         outdated_recordings = get_outdated_recordings(existing_recordings)
 
         for outdated_recording in outdated_recordings:
-            outdated_filepath = os.path.join(destination, outdated_recording.filename)
+            outdated_filepath = to_filepath(destination, outdated_recording.group_name, outdated_recording.filename)
             if not dry_run:
                 logger.info("Removing outdated recording : %s", outdated_recording.base_filename)
 
@@ -394,20 +394,21 @@ def prepare_destination(destination):
                 # removes the thumbnail file
                 outdated_thm_filename = "%s_%s%s.thm" % (outdated_recording.base_filename, outdated_recording.type,
                                                          outdated_recording.direction)
-                outdated_thm_filepath = os.path.join(destination, outdated_thm_filename)
+                outdated_thm_filepath = to_filepath(destination, outdated_recording.group_name, outdated_thm_filename)
                 if os.path.exists(outdated_thm_filepath):
                     os.remove(outdated_thm_filepath)
 
                 # removes the accelerometer data
                 outdated_tgf_filename = "%s_%s.3gf" % (outdated_recording.base_filename, outdated_recording.type)
-                outdated_tgf_filepath = os.path.join(destination, outdated_tgf_filename)
+                outdated_tgf_filepath = to_filepath(destination, outdated_recording.group_name, outdated_tgf_filename)
                 if os.path.exists(outdated_tgf_filepath):
                     os.remove(outdated_tgf_filepath)
 
                 # removes the gps data for normal, event and manual recordings
                 if outdated_recording.type in ("N", "E", "M"):
                     outdated_gps_filename = "%s_%s.gps" % (outdated_recording.base_filename, outdated_recording.type)
-                    outdated_gps_filepath = os.path.join(destination, outdated_gps_filename)
+                    outdated_gps_filepath = to_filepath(destination, outdated_recording.group_name,
+                                                        outdated_gps_filename)
                     if os.path.exists(outdated_gps_filepath):
                         os.remove(outdated_gps_filepath)
             else:
