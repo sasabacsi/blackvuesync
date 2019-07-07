@@ -36,17 +36,15 @@ def test_to_recording(filename, expected_recording):
     assert expected_recording == recording
 
 
-@pytest.mark.parametrize("filename, expected_daily_group_name, expected_weekly_group_name, "
+@pytest.mark.parametrize("recording_datetime, expected_daily_group_name, expected_weekly_group_name, "
                          "expected_monthly_group_name, expected_yearly_group_name",
-    [("20190219_104220_NF.mp4", "2019-02-19", "2019-02-18", "2019-02", "2019")])
-def test_to_group_name(filename, expected_daily_group_name, expected_weekly_group_name, expected_monthly_group_name,
-                       expected_yearly_group_name):
-    recording = blackvuesync.to_recording(filename)
-
-    assert expected_daily_group_name == blackvuesync.to_group_name(recording, "daily")
-    assert expected_weekly_group_name == blackvuesync.to_group_name(recording, "weekly")
-    assert expected_monthly_group_name == blackvuesync.to_group_name(recording, "monthly")
-    assert expected_yearly_group_name == blackvuesync.to_group_name(recording, "yearly")
+                         [(datetime.datetime(2019, 2, 19, 13, 15, 13), "2019-02-19", "2019-02-18", "2019-02", "2019")])
+def test_to_group_name(recording_datetime, expected_daily_group_name, expected_weekly_group_name,
+                       expected_monthly_group_name, expected_yearly_group_name):
+    assert expected_daily_group_name == blackvuesync.to_group_name(recording_datetime, "daily")
+    assert expected_weekly_group_name == blackvuesync.to_group_name(recording_datetime, "weekly")
+    assert expected_monthly_group_name == blackvuesync.to_group_name(recording_datetime, "monthly")
+    assert expected_yearly_group_name == blackvuesync.to_group_name(recording_datetime, "yearly")
 
 
 @pytest.mark.parametrize("keep, expected_cutoff_date", [
