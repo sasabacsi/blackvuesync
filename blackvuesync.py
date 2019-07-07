@@ -207,15 +207,22 @@ def to_natural_speed(speed_bps):
     return 0, "bps"
 
 
+def to_filepath(filename, destination, group_name):
+    if group_name:
+        return os.path.join(destination, group_name, filename)
+    else:
+        return os.path.join(destination, filename)
+
+
 def download_file(base_url, filename, destination, group_name):
     """downloads a file from the dashcam to the destination directory; returns whether data was transferred"""
     global dry_run
 
+    # if we have a group name, we may not have ensured it exists yet
     if group_name:
         ensure_destination(os.path.join(destination, group_name))
-        filepath = os.path.join(destination, group_name, filename)
-    else:
-        filepath = os.path.join(destination, filename)
+
+    filepath = to_filepath(destination, group_name, filename)
 
     if os.path.exists(filepath):
         logger.debug("Ignoring already downloaded file : %s", filename)
