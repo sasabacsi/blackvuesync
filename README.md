@@ -81,7 +81,7 @@ $ blackvuesync.py dashcam.example.net --destination /mnt/dashcam --keep 2w
 ```
 
 Other options:
-* ```--grouping```: Groups downloaded recordings in directories according to different strategies.
+* ```--grouping```: Groups downloaded recordings in directories according to different schemes. This helps manage large amounts of recordings, e.g. helping speed up loading recordings in the BlackVue Viewer app. The supported groupings are:
     * ```daily```:  By day, e.g. 2018-10-26;
     * ```weekly```: By week, with the directory indicating the date of that week's monday, e.g. 2018-10-22;
     * ```monthly```: By month, e.g. 2018-10;
@@ -165,8 +165,8 @@ To operate correctly, the docker image requires at a minimum:
 Other parameters:
 
 * ```GROUPING```: Groups downloaded recordings in directories, ```daily```, ```weekly```, ```monthly```, ```yearly``` and ```none``` are supported. (Default: ```none```.)
-* ```PRIORITY```: Sets the priority to download recordings. Pick ```time``` to download from oldest to newest; pick ```type``` to download manual, event, normal and parking recordings in that order. Defaults to ```time```.
 * ```KEEP```: Sets the retention period of downloaded recordings. Recordings prior to the retention period will be removed from the destination. Accepted units are ```d``` for days and ```w``` for weeks. If no unit is indicated, days are assumed. (Default: empty, meaning recordings are kept forever.)
+* ```PRIORITY```: Sets the priority to download recordings. Pick ```time``` to download from oldest to newest; pick ```type``` to download manual, event, normal and parking recordings in that order. Defaults to ```time```.
 * ```MAX_USED_DISK```: If set to a percentage value, stops downloading if the amount of used disk space exceeds the indicated percentage value.  (Default: ```90```, i.e. 90%.)
 * ```TIMEOUT```: If set to a float value, sets the timeout in seconds for connecting to the dashcam. (Default: ```10.0``` seconds.)
 * ```VERBOSE```: If set to a number greater than zero, increases logging verbosity. (Default: ```0```.)
