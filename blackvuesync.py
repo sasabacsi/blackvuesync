@@ -221,7 +221,8 @@ def download_file(base_url, filename, destination, group_name):
 
     # if we have a group name, we may not have ensured it exists yet
     if group_name:
-        ensure_destination(os.path.join(destination, group_name))
+        group_filepath = os.path.join(destination, group_name)
+        ensure_destination(group_filepath)
 
     filepath = to_filepath(destination, group_name, filename)
 
@@ -455,7 +456,7 @@ def sync(address, destination, grouping, download_priority):
 temp_filename_re = re.compile(r"\._?\d{8}_\d{6}_[NEPM][FR]?\.\w+")
 
 
-def clean_destination(destination):
+def clean_destination(destination, grouping):
     """removes temporary artifacts from the destination directory"""
     global dry_run
 
@@ -469,6 +470,21 @@ def clean_destination(destination):
             os.remove(temp_filepath)
         else:
             logger.debug("DRY RUN Would remove temporary file : %s", temp_filepath)
+
+    # removes empty grouping directories
+    group_name_glob = group_name_globs[grouping]
+    if group_name_glob:
+        group_filepath_glob = os.path.join(destination, group_name_glob)
+
+        group_filepaths = glob.glob(group_filepath_glob)
+
+        for group_filepath in group_filepaths:
+            if not os.listdir(group_filepath):
+                if not dry_run:
+                    logger.debug("Removing grouping directory : %s" % group_filepath)
+                    os.rmdir(group_filepath)
+                else:
+                    logger.debug("DRY RUN Would remove grouping directory : %s", group_filepath)
 
 
 def lock(destination):
@@ -588,7 +604,7 @@ def run():
             sync(args.address, destination, grouping, args.priority)
         finally:
             # removes temporary files (if we synced successfully, these are temp files from lost recordings)
-            clean_destination(destination)
+            clean_destination(destination, grouping)
     except UserWarning as e:
         logger.warning(e.args[0])
         return 1
