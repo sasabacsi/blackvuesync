@@ -33,7 +33,6 @@ import urllib.parse
 import urllib.request
 import socket
 
-
 # logging
 logging.basicConfig(format="%(asctime)s: %(levelname)s %(message)s")
 
@@ -321,6 +320,7 @@ def download_recording(base_url, recording, destination):
 
 def sort_recordings(recordings, recording_priority):
     """sorts recordings in place according to the given priority"""
+
     def datetime_sort_key(recording):
         """sorts by datetime, then recording type, then front/rear direction"""
         return recording.datetime, "FR".find(recording.direction)
@@ -455,6 +455,11 @@ def sync(address, destination, grouping, download_priority):
         download_recording(base_url, recording, destination)
 
 
+def is_empty_directory(dirpath):
+    """tests if a directory is empty, ignoring hidden files"""
+    return all(x.startswith(".") for x in os.listdir(dirpath))
+
+
 # temp filename regular expression
 temp_filename_glob = ".[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[NEPM]*.*"
 
@@ -474,7 +479,7 @@ def clean_destination(destination, grouping):
         else:
             logger.debug("DRY RUN Would remove temporary file : %s", temp_filepath)
 
-    # removes empty grouping directories
+    # removes empty grouping directories; dotfiles such as .DS_Store
     group_name_glob = group_name_globs[grouping]
     if group_name_glob:
         group_filepath_glob = os.path.join(destination, group_name_glob)
@@ -482,10 +487,10 @@ def clean_destination(destination, grouping):
         group_filepaths = glob.glob(group_filepath_glob)
 
         for group_filepath in group_filepaths:
-            if not os.listdir(group_filepath):
+            if is_empty_directory(group_filepath):
                 if not dry_run:
                     logger.debug("Removing grouping directory : %s" % group_filepath)
-                    os.rmdir(group_filepath)
+                    shutil.rmtree(group_filepath)
                 else:
                     logger.debug("DRY RUN Would remove grouping directory : %s", group_filepath)
 
