@@ -1,5 +1,6 @@
 # CHANGELOG
-
+## 2.0 (2025-01-03)
+* Updated alpine to 3.20 (#5)
 ## 1.9 (2021-08-08)
 
 * Properly removes outdated recordings with new event types and upload flags from May 2021 firmware. (#4)
